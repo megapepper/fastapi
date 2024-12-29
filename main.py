@@ -22,9 +22,3 @@ async def word_count(text):
 @app.get("/health", status_code=200)
 def check_health():
     return "health OK"
-
-'''
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Union[str, None] = None):
-    return {"item_id": item_id, "q": q}
-e'''
