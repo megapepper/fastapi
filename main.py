@@ -1,7 +1,7 @@
 from typing import Union
 import numpy as np
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Body
 
 from statistics import mode
 
@@ -13,8 +13,8 @@ def read_root():
     return "World"
 
 
-@app.post("/analyse/{text}")
-async def word_count(text):
+@app.post("/analyse")
+async def word_count(text: str = Body(...)):
     arr = text.split()
     return mode(arr)
 
