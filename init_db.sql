@@ -1,0 +1,1 @@
+create table if not exists user_app (id int, name varchar(50), avatar_url varchar(255));
