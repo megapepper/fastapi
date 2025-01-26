@@ -1,1 +1,2 @@
-create table if not exists user_app (id int, name varchar(50), avatar_url varchar(255));
+create table if not exists user_app (id serial primary key, name varchar(50), avatar_url varchar(255));
+create table if not exists user_credential (user_id integer REFERENCES user_app, login text, password text, salt text);
