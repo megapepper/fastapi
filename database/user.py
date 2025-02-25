@@ -1,29 +1,33 @@
-from fastapi import Response
-from fastapi.responses import JSONResponse
 import psycopg2
-from psycopg2 import connect, pool
-from json import dumps
-import traceback
-from . import auth 
-
-pool = psycopg2.pool.SimpleConnectionPool( 
-    2, 3, user='postgres', password='1234', 
-    host='localhost', port='5432', database='postgres')
+from psycopg2 import pool
+import os
+import models
 
 
-def insert_user_app(name:str, avatar_url:str='', login:str='', hashed_password:str='', salt:str=''):
+pool = None
+
+def init_pool(pool_config):
+    global pool
+    if pool_config is not None:
+        pool = pool_config
+    else:
+        pool = psycopg2.pool.SimpleConnectionPool(2, 3, user=os.getenv('user'), password=os.getenv('password'), 
+                                          host=os.getenv('host'), port=os.getenv('port'), database=os.getenv('database'))
+
+
+def insert(userAuth:models.UserAuth, hashed_password:str='', salt:str=''):
     try:
         connection = pool.getconn() 
         cursor = connection.cursor()
         insert_user_app ="""insert into user_app(name, avatar_url) values(%s, %s) RETURNING id;"""
         insert_user_credential ="""insert into user_credential(user_id, login, password, salt) values(%s,%s, %s, %s);"""
-        cursor.execute(insert_user_app, (name, avatar_url))
+        cursor.execute(insert_user_app, (userAuth.name, userAuth.avatar_url))
         id_ = cursor.fetchall()[0][0]
-        cursor.execute(insert_user_credential, (id_, login, hashed_password, salt))
+        cursor.execute(insert_user_credential, (id_, userAuth.login, hashed_password, salt))
         connection.commit()
-        return JSONResponse(content = {"user_id":id_})
+        return id_
     except psycopg2.errors.UniqueViolation as e:
-         return Response(status_code=409, content = 'this login already exists')
+         raise models.LoginNotUnique('this login already exists')
     finally:
         if cursor:
             cursor.close()
@@ -31,7 +35,7 @@ def insert_user_app(name:str, avatar_url:str='', login:str='', hashed_password:s
             pool.putconn(connection)
 
 
-def check_user_login(login:str):
+def check_login(login:str):
     try:
         connection = pool.getconn() 
         cursor = connection.cursor()
@@ -45,13 +49,16 @@ def check_user_login(login:str):
             pool.putconn(connection)
 
 
-def get_user_info(user_id):
+def get_info(user_id):
     try:
         connection = pool.getconn() 
         cursor = connection.cursor()
-        sql_context ="""select * from user_app where id = %s;"""
+        sql_context ="""select id, name, avatar_url from user_app where id = %s;"""
         cursor.execute(sql_context, (user_id,))
-        return cursor.fetchall()
+        result = cursor.fetchall()
+        user_info = result[0]
+        user_info_model = models.UserInfo(id=user_info[0], username=user_info[1], avatar=user_info[2])
+        return user_info_model
     finally:
         if cursor:
             cursor.close()
